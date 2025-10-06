@@ -1,11 +1,11 @@
 import numpy as np
-from sklearn.linear_model import LogisticRegression
+from sklearn.svm import SVC
 from sklearn.metrics import accuracy_score, classification_report
 from sklearn.preprocessing import StandardScaler
 from sentence_transformers import SentenceTransformer
 
 def load():
-# Carregar os embeddings e labels salvos
+    # Carregar os embeddings e labels salvos
     data = np.load('data/feiticos_embeddings.npz')
 
     train_embeddings = data['train_embeddings']
@@ -26,26 +26,30 @@ def load():
     return train_label, validation_label, test_label, train_embeddings_scaled, validation_embeddings_scaled, test_embeddings_scaled, scaler
 
 def train():
-    c_values = [0.01, 0.1, 1, 10, 100]
+    c_values = [0.1, 1, 10, 100]
+    gamma_values = [0.001, 0.01, 0.1, 1]
 
-    best_c = 0.01
+    best_c = 0.1
+    best_gamma = 0.001
     best_model = None
     best_accuracy = 0
 
     train_label, validation_label, test_label, train_embeddings_scaled, validation_embeddings_scaled, test_embeddings_scaled, scaler = load()
 
     for c in c_values:
-        model = LogisticRegression(C=c, max_iter=2000)
-        model.fit(train_embeddings_scaled, train_label)
+        for g in gamma_values:
+            model = SVC(C=c, gamma=g, kernel='rbf')
+            model.fit(train_embeddings_scaled, train_label)
 
-        val_accuracy = model.score(validation_embeddings_scaled, validation_label)
+            val_accuracy = model.score(validation_embeddings_scaled, validation_label)
 
-        print(f"C: {c}, Acurácia: {val_accuracy:.4f}")
-             
-        if val_accuracy > best_accuracy:
-            best_c = c
-            best_model = model
-            best_accuracy = val_accuracy
+            print(f"C: {c}, Gamma: {g}, Acurácia: {val_accuracy:.4f}")
+                
+            if val_accuracy > best_accuracy:
+                best_c = c
+                best_gamma = g
+                best_model = model
+                best_accuracy = val_accuracy
 
     if best_model is not None:
         # Fazer previsões no conjunto de teste
@@ -61,11 +65,11 @@ def train():
     else:
         print("Erro: Nenhum modelo foi treinado com sucesso.")
 
-    return best_c, best_model, scaler
+    return best_c, best_gamma, best_model, scaler
 
-def main():
+def svm():
     print("treinando...")
-    best_c, best_model, scaler = train()
+    best_c, best_gamma, best_model, scaler = train()
     
     while True:
         print("Deseja testar para um input personalizado? (s/n)")
@@ -90,7 +94,7 @@ def main():
 
             prediction = best_model.predict(sen_embed_scaled)
 
-            print(f"Usando C = {best_c}.")
+            print(f"Usando C = {best_c}, Gamma: {best_gamma}.")
 
             if prediction[0] == school:
                 print(f"O modelo corretamente acertou a escola: {prediction[0]}.")
@@ -102,4 +106,4 @@ def main():
             print("Erro ao carregar o modelo ou input.")
 
 if __name__ == "__main__":
-    main()
+    svm()

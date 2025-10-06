@@ -5,7 +5,7 @@ from sklearn.preprocessing import StandardScaler
 from sentence_transformers import SentenceTransformer
 
 def load():
-# Carregar os embeddings e labels salvos
+    # Carregar os embeddings e labels salvos
     data = np.load('data/feiticos_embeddings.npz')
 
     train_embeddings = data['train_embeddings']
@@ -72,7 +72,7 @@ def train():
 
     return best_k, best_model, best_metric, scaler
 
-def main():
+def knn():
     print("treinando...")
     best_k, best_model, best_metric, scaler = train()
     
@@ -111,4 +111,4 @@ def main():
             print("Erro ao carregar o modelo ou input.")
 
 if __name__ == "__main__":
-    main()
+    knn()
