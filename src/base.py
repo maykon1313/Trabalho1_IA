@@ -32,7 +32,6 @@ descriptions = [
 ]
 
 def load_for_cross_validation():
-    """Carrega os dados combinando treino e validação para validação cruzada."""
     data = np.load('data/feiticos_embeddings.npz')
 
     train_embeddings = data['train_embeddings']
@@ -98,7 +97,6 @@ def interactive_menu(best_model, scaler, model, info_str: str):
             accuracy = acertos / total if total else 0.0
             print(f"Taxa de acerto total: {accuracy:.2%}.")
             print("Saindo.")
-            return accuracy
 
         else:
             print("Erro no input.")
