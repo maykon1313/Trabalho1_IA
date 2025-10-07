@@ -1,54 +1,63 @@
 from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import accuracy_score, classification_report, f1_score
-from base import load, get_sentence_transformer, interactive_menu
+from sklearn.model_selection import cross_val_score
+from sklearn.preprocessing import StandardScaler
+from base import load_for_cross_validation, get_sentence_transformer, interactive_menu
 
-def train_lr():
+def train_lr_cross_validation(k_folds):
     c_values = [0.001, 0.01, 0.1, 1, 10, 100, 1000]
 
     best_c = 0.01
     best_model = None
     best_f1_score = 0
 
-    train_label, validation_label, test_label, train_embeddings_scaled, validation_embeddings_scaled, test_embeddings_scaled, scaler = load()
+    train_val_embeddings, train_val_label, test_embeddings, test_label = load_for_cross_validation()
+
+    # Scaler para normalização
+    scaler = StandardScaler()
+    train_val_embeddings_scaled = scaler.fit_transform(train_val_embeddings)
+
+    print(f"Usando validação cruzada com {k_folds} folds\n")
 
     for c in c_values:
         lr = LogisticRegression(C=c, max_iter=2000)
-        lr.fit(train_embeddings_scaled, train_label)
+        
+        # Cross-validation com f1-score
+        cv_scores = cross_val_score(lr, train_val_embeddings_scaled, train_val_label, cv=k_folds, scoring='f1_weighted')
+        
+        mean_f1 = cv_scores.mean()
+        std_f1 = cv_scores.std()
 
-        # Fazer previsões no conjunto de validação
-        val_predictions = lr.predict(validation_embeddings_scaled)
-        val_accuracy = accuracy_score(validation_label, val_predictions)
-        score = f1_score(validation_label, val_predictions, average='weighted')
+        print(f"C: {c}, F1-score médio: {mean_f1:.4f} (±{std_f1:.4f})")
 
-        print(f"C: {c}, Acurácia: {val_accuracy:.4f}, F1-score: {score:.4f}")
-
-        if score > best_f1_score:
+        if mean_f1 > best_f1_score:
             best_c = c
-            best_model = lr
-            best_f1_score = score
+            best_f1_score = mean_f1
 
-    if best_model is not None:
-        # Fazer previsões no conjunto de teste
-        test_predictions = best_model.predict(test_embeddings_scaled)
-        test_accuracy = accuracy_score(test_label, test_predictions)
-        test_f1 = f1_score(test_label, test_predictions, average='weighted')
+    # Treinar o modelo final com todos os dados de treino+validação
+    best_model = LogisticRegression(C=best_c, max_iter=2000)
+    best_model.fit(train_val_embeddings_scaled, train_val_label)
 
-        print(f"\nMelhor valor de C: {best_c}")
-        print(f"F1-score na validação: {best_f1_score:.4f}")
-        print(f"Acurácia no teste: {test_accuracy:.4f}")
-        print(f"F1-score no teste: {test_f1:.4f}")
+    # Testar no conjunto de teste
+    test_embeddings_scaled = scaler.transform(test_embeddings)
+    test_predictions = best_model.predict(test_embeddings_scaled)
+    test_accuracy = accuracy_score(test_label, test_predictions)
+    test_f1 = f1_score(test_label, test_predictions, average='weighted')
 
-        # Relatório de classificação detalhado
-        print("\nRelatório de Classificação no Conjunto de Teste:")
-        print(classification_report(test_label, test_predictions))
-    else:
-        print("Erro: Nenhum modelo foi treinado com sucesso.")
+    print(f"\nMelhor valor de C: {best_c}")
+    print(f"F1-score médio na validação cruzada: {best_f1_score:.4f}")
+    print(f"Acurácia no teste: {test_accuracy:.4f}")
+    print(f"F1-score no teste: {test_f1:.4f}")
+
+    # Relatório de classificação detalhado
+    print("\nRelatório de Classificação no Conjunto de Teste:")
+    print(classification_report(test_label, test_predictions))
 
     return best_c, best_model, scaler
 
-def lr():
-    print("treinando...")
-    best_c, best_model, scaler = train_lr()
+def lr_cross_validation(k_folds):
+    print("treinando com validação cruzada...")
+    best_c, best_model, scaler = train_lr_cross_validation(k_folds)
 
     if best_model is None:
         print("Erro ao carregar o modelo.")
@@ -56,9 +65,9 @@ def lr():
 
     transformer_model = get_sentence_transformer()
 
-    info = f"Usando C = {best_c}."
+    info = f"Usando C = {best_c} (com validação cruzada)."
 
     interactive_menu(best_model, scaler, transformer_model, info)
 
 if __name__ == "__main__":
-    lr()
+    lr_cross_validation(5)

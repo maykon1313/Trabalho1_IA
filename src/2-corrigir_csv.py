@@ -13,10 +13,12 @@ def check_and_fix_csv_fields(file_path, output_path):
             if len(row) != 3:
                 print(f"[ERROR] Row {row_num} has {len(row)} fields instead of 3. Fixing...")
                 fixed_row = [row[0], row[1], ','.join(row[2:])]
-                writer.writerow(fixed_row)
+                if fixed_row[2].strip():  # Verifica se a descrição não está vazia
+                    writer.writerow(fixed_row)
             else:
-                print(f"[OK] Row {row_num}.")
-                writer.writerow(row)
+                if row[2].strip():  # Verifica se a descrição não está vazia
+                    print(f"[OK] Row {row_num}.")
+                    writer.writerow(row)
 
 if __name__ == "__main__":
     check_and_fix_csv_fields('data/raw/feiticos.csv', 'data/raw/feiticos_fixed.csv')

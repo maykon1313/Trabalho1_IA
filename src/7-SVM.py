@@ -1,8 +1,10 @@
 from sklearn.svm import SVC
 from sklearn.metrics import accuracy_score, classification_report, f1_score
-from base import load, get_sentence_transformer, interactive_menu
+from sklearn.model_selection import cross_val_score
+from sklearn.preprocessing import StandardScaler
+from base import load_for_cross_validation, get_sentence_transformer, interactive_menu
 
-def train_svm():
+def train_svm_cross_validation(k_folds):
     c_values = [0.01, 0.1, 1, 10, 100, 1000]
     gamma_values = [0.0001, 0.001, 0.01, 0.1, 1, 10]
 
@@ -11,48 +13,56 @@ def train_svm():
     best_model = None
     best_f1_score = 0
 
-    train_label, validation_label, test_label, train_embeddings_scaled, validation_embeddings_scaled, test_embeddings_scaled, scaler = load()
+    train_val_embeddings, train_val_label, test_embeddings, test_label = load_for_cross_validation()
+
+    # Scaler para normalização
+    scaler = StandardScaler()
+    train_val_embeddings_scaled = scaler.fit_transform(train_val_embeddings)
+
+    print(f"Usando validação cruzada com {k_folds} folds\n")
 
     for c in c_values:
         for g in gamma_values:
             svm = SVC(C=c, gamma=g, kernel='rbf')
-            svm.fit(train_embeddings_scaled, train_label)
+            
+            # Cross-validation com f1-score
+            cv_scores = cross_val_score(svm, train_val_embeddings_scaled, train_val_label, cv=k_folds, scoring='f1_weighted')
+            
+            mean_f1 = cv_scores.mean()
+            std_f1 = cv_scores.std()
 
-            val_predictions = svm.predict(validation_embeddings_scaled)
-            val_accuracy = accuracy_score(validation_label, val_predictions)
-            score = f1_score(validation_label, val_predictions, average='weighted')
+            print(f"C: {c}, Gamma: {g}, F1-score médio: {mean_f1:.4f} (±{std_f1:.4f})")
 
-            print(f"C: {c}, Gamma: {g}, Acurácia: {val_accuracy:.4f}, F1-score: {score:.4f}")
-                
-            if score > best_f1_score:
+            if mean_f1 > best_f1_score:
                 best_c = c
                 best_gamma = g
-                best_model = svm
-                best_f1_score = score
+                best_f1_score = mean_f1
 
-    if best_model is not None:
-        # Fazer previsões no conjunto de teste
-        test_predictions = best_model.predict(test_embeddings_scaled)
-        test_accuracy = accuracy_score(test_label, test_predictions)
-        test_f1 = f1_score(test_label, test_predictions, average='weighted')
-        
-        print(f"\nMelhor valor de C: {best_c}")
-        print(f"Melhor valor de Gamma: {best_gamma}")
-        print(f"F1-score na validação: {best_f1_score:.4f}")
-        print(f"Acurácia no teste: {test_accuracy:.4f}")
-        print(f"F1-score no teste: {test_f1:.4f}")
+    # Treinar o modelo final com todos os dados de treino+validação
+    best_model = SVC(C=best_c, gamma=best_gamma, kernel='rbf')
+    best_model.fit(train_val_embeddings_scaled, train_val_label)
 
-        # Relatório de classificação detalhado
-        print("\nRelatório de Classificação no Conjunto de Teste:")
-        print(classification_report(test_label, test_predictions))
-    else:
-        print("Erro: Nenhum modelo foi treinado com sucesso.")
+    # Testar no conjunto de teste
+    test_embeddings_scaled = scaler.transform(test_embeddings)
+    test_predictions = best_model.predict(test_embeddings_scaled)
+    test_accuracy = accuracy_score(test_label, test_predictions)
+    test_f1 = f1_score(test_label, test_predictions, average='weighted')
+
+    print(f"\nMelhor valor de C: {best_c}")
+    print(f"Melhor valor de Gamma: {best_gamma}")
+    print(f"F1-score médio na validação cruzada: {best_f1_score:.4f}")
+    print(f"Acurácia no teste: {test_accuracy:.4f}")
+    print(f"F1-score no teste: {test_f1:.4f}")
+
+    # Relatório de classificação detalhado
+    print("\nRelatório de Classificação no Conjunto de Teste:")
+    print(classification_report(test_label, test_predictions))
 
     return best_c, best_gamma, best_model, scaler
 
-def svm():
-    print("treinando...")
-    best_c, best_gamma, best_model, scaler = train_svm()
+def svm_cross_validation(k_folds):
+    print("treinando com validação cruzada...")
+    best_c, best_gamma, best_model, scaler = train_svm_cross_validation(k_folds)
     
     if best_model is None:
         print("Erro ao carregar o modelo.")
@@ -60,9 +70,9 @@ def svm():
 
     transformer_model = get_sentence_transformer()
 
-    info = f"Usando C = {best_c}, Gamma: {best_gamma}."
+    info = f"Usando C = {best_c}, Gamma: {best_gamma} (com validação cruzada)."
     
     interactive_menu(best_model, scaler, transformer_model, info)
 
 if __name__ == "__main__":
-    svm()
+    svm_cross_validation(5)

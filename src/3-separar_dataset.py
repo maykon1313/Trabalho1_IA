@@ -5,11 +5,11 @@ def separate():
     # Carregar o dataset CSV
     raw = pd.read_csv('data/raw/feiticos_fixed.csv')
 
-    # Dividir em treino (70%) e restante (30%)
-    train_df, temp_ds = train_test_split(raw, test_size=0.30, random_state=42)
+    # Dividir em treino (70%) e restante (30%) de forma estratificada
+    train_df, temp_ds = train_test_split(raw, test_size=0.30, random_state=42, stratify=raw['escola'])
 
-    # Dividir o restante em validação (20% do total) e teste (10% do total)
-    val_df, test_df = train_test_split(temp_ds, test_size=0.3333, random_state=42)
+    # Dividir o restante em validação (20% do total) e teste (10% do total) de forma estratificada
+    val_df, test_df = train_test_split(temp_ds, test_size=0.3333, random_state=42, stratify=temp_ds['escola'])
 
     # Verificar proporções (aproximadas)
     print(f"Treino: {len(train_df)} linhas ({len(train_df)/len(raw)*100:.1f}%)")
