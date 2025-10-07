@@ -20,7 +20,7 @@ def train_lr_cross_validation(k_folds):
     print(f"Usando validação cruzada com {k_folds} folds\n")
 
     for c in c_values:
-        lr = LogisticRegression(C=c, max_iter=2000)
+        lr = LogisticRegression(C=c)
         
         # Cross-validation com f1-score
         cv_scores = cross_val_score(lr, train_val_embeddings_scaled, train_val_label, cv=k_folds, scoring='f1_weighted')

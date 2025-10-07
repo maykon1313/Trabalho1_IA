@@ -97,6 +97,7 @@ def interactive_menu(best_model, scaler, model, info_str: str):
             accuracy = acertos / total if total else 0.0
             print(f"Taxa de acerto total: {accuracy:.2%}.")
             print("Saindo.")
-
+            return
+        
         else:
             print("Erro no input.")
