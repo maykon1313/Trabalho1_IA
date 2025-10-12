@@ -1,5 +1,7 @@
 import numpy as np
 from sentence_transformers import SentenceTransformer
+from sklearn.preprocessing import normalize
+import csv
 
 schools = [
     'abjuration', 'abjuration',
@@ -46,18 +48,18 @@ def load_for_cross_validation():
     train_val_embeddings = np.vstack([train_embeddings, validation_embeddings])
     train_val_label = np.concatenate([train_label, validation_label])
 
-    # Scaler será aplicado dentro do cross-validation
     return train_val_embeddings, train_val_label, test_embeddings, test_label
 
 def get_sentence_transformer(model_name: str = 'sentence-transformers/all-MiniLM-L6-v2') -> SentenceTransformer:
     return SentenceTransformer(model_name)
 
-def prediction(school, description, scaler, best_model, transform_model):
+def prediction(school, description, best_model, transform_model):
     sen_embed = transform_model.encode(description, convert_to_numpy=True)
 
-    sen_embed_scaled = scaler.transform([sen_embed])
+    # Normalizar o embedding com L2
+    sen_embed_normalized = normalize([sen_embed], norm='l2')
 
-    prediction = best_model.predict(sen_embed_scaled)
+    prediction = best_model.predict(sen_embed_normalized)
 
     if prediction[0] == school:
         print(f"[Acerto] O modelo acertou a escola: {prediction[0]}.")
@@ -66,15 +68,16 @@ def prediction(school, description, scaler, best_model, transform_model):
         print(f"[Erro] A escola correta era {school}, o modelo previu: {prediction[0]}.")
         return 0
 
-def interactive_menu(best_model, scaler, model, info_str: str):
+def interactive_menu(best_model, transform_model, info_str: str):
     acertos = 0
     total = 0
 
     while True:
         print("\n-----OPÇÕES-----")
         print("1 - Testar para um input personalizado.")
-        print("2 - Testar para dados pré-feito.")
-        print("3 - Sair")
+        print("2 - Testar para dados pré-feito (8 casos do teste).")
+        print("3 - Testar para dados pré-feito (todos casos do teste).")
+        print("4 - Sair")
         print("Escolha:", end=" ")
         resp = input()
         print()
@@ -84,16 +87,28 @@ def interactive_menu(best_model, scaler, model, info_str: str):
             description = input("Digite a descrição do feitiço: ")
 
             print(info_str)
-            acertos += prediction(school, description, scaler, best_model, model)
+            acertos += prediction(school, description, best_model, transform_model)
             total += 1
 
         elif resp == "2":
             print(info_str)
             for i in range(len(schools)):
-                acertos += prediction(schools[i], descriptions[i], scaler, best_model, model)
+                acertos += prediction(schools[i], descriptions[i], best_model, transform_model)
                 total += 1
 
         elif resp == "3":
+            print(info_str)
+            
+            with open('data/separated/feiticos_test.csv', encoding='utf-8') as csvfile:
+                reader = csv.DictReader(csvfile)
+                for row in reader:
+                    school = row['escola']
+                    description = row['descricao']
+
+                    acertos += prediction(school, description, best_model, transform_model)
+                    total += 1
+
+        elif resp == "4":
             accuracy = acertos / total if total else 0.0
             print(f"Taxa de acerto total: {accuracy:.2%}.")
             print("Saindo.")

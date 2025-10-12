@@ -1,7 +1,7 @@
 from sklearn.svm import SVC
 from sklearn.metrics import accuracy_score, classification_report, f1_score
 from sklearn.model_selection import cross_val_score
-from sklearn.preprocessing import StandardScaler
+from sklearn.preprocessing import normalize
 from base import load_for_cross_validation, get_sentence_transformer, interactive_menu
 
 def train_svm_cross_validation(k_folds):
@@ -15,9 +15,9 @@ def train_svm_cross_validation(k_folds):
 
     train_val_embeddings, train_val_label, test_embeddings, test_label = load_for_cross_validation()
 
-    # Scaler para normalização
-    scaler = StandardScaler()
-    train_val_embeddings_scaled = scaler.fit_transform(train_val_embeddings)
+    # Normalizar os embeddings com L2
+    train_val_embeddings_normalized = normalize(train_val_embeddings, norm='l2')
+    test_embeddings_normalized = normalize(test_embeddings, norm='l2')
 
     print(f"Usando validação cruzada com {k_folds} folds\n")
 
@@ -26,7 +26,7 @@ def train_svm_cross_validation(k_folds):
             svm = SVC(C=c, gamma=g, kernel='rbf')
             
             # Cross-validation com f1-score
-            cv_scores = cross_val_score(svm, train_val_embeddings_scaled, train_val_label, cv=k_folds, scoring='f1_weighted')
+            cv_scores = cross_val_score(svm, train_val_embeddings_normalized, train_val_label, cv=k_folds, scoring='f1_weighted')
             
             mean_f1 = cv_scores.mean()
             std_f1 = cv_scores.std()
@@ -40,11 +40,10 @@ def train_svm_cross_validation(k_folds):
 
     # Treinar o modelo final com todos os dados de treino+validação
     best_model = SVC(C=best_c, gamma=best_gamma, kernel='rbf')
-    best_model.fit(train_val_embeddings_scaled, train_val_label)
+    best_model.fit(train_val_embeddings_normalized, train_val_label)
 
     # Testar no conjunto de teste
-    test_embeddings_scaled = scaler.transform(test_embeddings)
-    test_predictions = best_model.predict(test_embeddings_scaled)
+    test_predictions = best_model.predict(test_embeddings_normalized)
     test_accuracy = accuracy_score(test_label, test_predictions)
     test_f1 = f1_score(test_label, test_predictions, average='weighted')
 
@@ -58,11 +57,11 @@ def train_svm_cross_validation(k_folds):
     print("\nRelatório de Classificação no Conjunto de Teste:")
     print(classification_report(test_label, test_predictions))
 
-    return best_c, best_gamma, best_model, scaler
+    return best_c, best_gamma, best_model
 
 def svm_cross_validation(k_folds):
     print("treinando com validação cruzada...")
-    best_c, best_gamma, best_model, scaler = train_svm_cross_validation(k_folds)
+    best_c, best_gamma, best_model = train_svm_cross_validation(k_folds)
     
     if best_model is None:
         print("Erro ao carregar o modelo.")
@@ -72,7 +71,7 @@ def svm_cross_validation(k_folds):
 
     info = f"Usando C = {best_c}, Gamma: {best_gamma} (com validação cruzada)."
     
-    interactive_menu(best_model, scaler, transformer_model, info)
+    interactive_menu(best_model, transformer_model, info)
 
 if __name__ == "__main__":
     svm_cross_validation(5)

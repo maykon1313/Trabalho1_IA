@@ -23,6 +23,7 @@ Este projeto tem como objetivo realizar a coleta, processamento e análise de da
   - `5-KNN.py`: Implementação do modelo KNN.
   - `6-Logistic_Regression.py`: Implementação do modelo de Regressão Logística.
   - `7-SVM.py`: Implementação do modelo SVM.
+  - `base.py`: Possuí os códigos bases para todos os modelos, carregamento de dados e realização das previsões.
 - `requirements.txt`: Lista de dependências do projeto.
 - `setup.py`: Script para configuração do ambiente e instalação de dependências.
 
