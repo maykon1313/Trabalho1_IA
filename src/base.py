@@ -33,7 +33,7 @@ descriptions = [
     "You summon a spirit that assumes the form of an unusually intelligent, strong, and loyal steed, creating a long-lasting bond with it. Appearing in an unoccupied space within range, the steed takes on a form that you choose: awarhorse, apony, acamel, anelk, or amastiff."
 ]
 
-def load_for_cross_validation():
+def load():
     data = np.load('data/feiticos_embeddings.npz')
 
     train_embeddings = data['train_embeddings']

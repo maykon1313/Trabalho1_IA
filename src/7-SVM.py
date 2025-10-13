@@ -2,7 +2,7 @@ from sklearn.svm import SVC
 from sklearn.metrics import accuracy_score, classification_report, f1_score
 from sklearn.model_selection import cross_val_score
 from sklearn.preprocessing import normalize
-from base import load_for_cross_validation, get_sentence_transformer, interactive_menu
+from base import load, get_sentence_transformer, interactive_menu
 
 def train_svm_cross_validation(k_folds):
     c_values = [0.01, 0.1, 1, 10, 100, 1000]
@@ -13,7 +13,7 @@ def train_svm_cross_validation(k_folds):
     best_model = None
     best_f1_score = 0
 
-    train_val_embeddings, train_val_label, test_embeddings, test_label = load_for_cross_validation()
+    train_val_embeddings, train_val_label, test_embeddings, test_label = load()
 
     # Normalizar os embeddings com L2
     train_val_embeddings_normalized = normalize(train_val_embeddings, norm='l2')
